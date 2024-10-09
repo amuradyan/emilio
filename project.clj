@@ -9,6 +9,7 @@
                  [org.clojure/data.json "2.5.0"]
                  [am.dekanat/pleajure "0.1.0"]
                  [ring/ring-core "1.8.2"]
+                 [org.telegram/telegrambots "6.9.7.1"]
                  [ring/ring-jetty-adapter "1.8.2"]]
   :repl-options {:init-ns emilio.core}
   :profiles {:uberjar {:aot :all}}

@@ -1,11 +1,17 @@
 (ns emilio.core
   (:gen-class)
   (:require [clj-http.client :as client]
-            [pleajure.core :as plj]
-            [clojure.java.io :as io]
             [clojure.data.json :as json]
+            [clojure.java.io :as io]
             [clojure.string :as clojure.string]
-            [ring.adapter.jetty :as jetty]))
+            [pleajure.core :as plj]
+            [ring.adapter.jetty :as jetty])
+  (:import [org.telegram.telegrambots.bots TelegramLongPollingBot]
+           [org.telegram.telegrambots.meta TelegramBotsApi]
+           [org.telegram.telegrambots.meta.api.methods.send SendMessage]
+           [org.telegram.telegrambots.meta.api.objects Update]
+           [org.telegram.telegrambots.meta.exceptions TelegramApiException]
+           [org.telegram.telegrambots.updatesreceivers DefaultBotSession]))
 
 (def config
   (plj/parse-from-file "resources/configs.plj"))
@@ -22,7 +28,35 @@
 (def assistant-id
   (plj/get-at config [:assistant-id]))
 
-(defn ask-a-question [message, thread-id, api-key]
+(def telegram-bot-token
+  (plj/get-at config [:telegram-bot-token]))
+
+(defn respond-with [bot ^Long who ^String what]
+  (let [sm (-> (SendMessage/builder)
+               (.chatId (str who))
+               (.text what)
+               (.build))]
+    (try
+      (.execute bot sm)
+      (catch TelegramApiException e
+        (throw (RuntimeException. e))))))
+
+(declare communicate)
+
+(def Emilio
+  (proxy [TelegramLongPollingBot] []
+    (getBotUsername []
+      "Emilio Hernandez-Azatyan")
+
+    (getBotToken []
+      telegram-bot-token)
+
+    (onUpdateReceived [^Update update]
+      (let [msg (.getMessage update)
+            user (.getFrom msg)]
+        (respond-with this (.getId user) (communicate (.getText msg)))))))
+
+(defn query-the-assistant [message, thread-id, api-key]
   (let [url (str "https://api.openai.com/v1/threads/" thread-id "/messages")
         token (str "Bearer " api-key)]
     (client/post url
@@ -73,17 +107,19 @@
                          (data-package-message? (first lines)) (extract-answer (first lines))
                          :else (stream-filter (rest lines) mode answer))))))
 
-
 (defn process-response [raw-response]
   (with-open [reader (io/reader (raw-response :body))]
     (stream-filter (line-seq reader))))
 
+(defn communicate [message]
+  (let [_ (query-the-assistant message thread-id api-key)
+        raw-response (demand-an-answer thread-id assistant-id api-key)]
+    (process-response raw-response)))
+
 (defn emilio [request]
   (case (request :request-method)
-    :get (let [query (request :query-string)
-               _ (ask-a-question query thread-id api-key)
-               raw-response (demand-an-answer thread-id assistant-id api-key)
-               answer (process-response raw-response)]
+    :get (let [message (request :query-string)
+               answer (communicate message)]
            {:status 200
             :headers {"Content-Type" "text/html"}
             :body answer})
@@ -91,7 +127,16 @@
      :headers {"Content-Type" "text/html"}
      :body "Forbidden"}))
 
+(defn run-emilio []
+  (try
+    (let [bots-api (TelegramBotsApi. DefaultBotSession)]
+      (.registerBot bots-api Emilio)
+      (println "Bot successfully registered!"))
+    (catch TelegramApiException e
+      (println "Error registering bot:" (.getMessage e)))))
+
 (defn -main
   [& _]
+  (run-emilio)
   (jetty/run-jetty emilio {:port port}))
 
