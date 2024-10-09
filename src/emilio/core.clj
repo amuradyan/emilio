@@ -1,4 +1,5 @@
 (ns emilio.core
+  (:gen-class)
   (:require [clj-http.client :as client]
             [pleajure.core :as plj]
             [clojure.java.io :as io]

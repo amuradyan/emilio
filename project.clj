@@ -11,4 +11,5 @@
                  [ring/ring-core "1.8.2"]
                  [ring/ring-jetty-adapter "1.8.2"]]
   :repl-options {:init-ns emilio.core}
-  :main emilio.core)
+  :profiles {:uberjar {:aot :all}}
+  :main ^:skip-aot emilio.core)
