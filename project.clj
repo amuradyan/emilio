@@ -7,6 +7,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [clj-http "3.13.0"]
                  [org.clojure/data.json "2.5.0"]
+                 [am.dekanat/pleajure "0.1.0"]
                  [ring/ring-core "1.8.2"]
                  [ring/ring-jetty-adapter "1.8.2"]]
   :repl-options {:init-ns emilio.core}

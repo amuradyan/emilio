@@ -1,18 +1,25 @@
 (ns emilio.core
   (:require [clj-http.client :as client]
+            [pleajure.core :as plj]
             [clojure.java.io :as io]
             [clojure.data.json :as json]
             [clojure.string :as clojure.string]
             [ring.adapter.jetty :as jetty]))
 
+(def config
+  (plj/parse-from-file "resources/configs.plj"))
+
+(def port
+  (plj/get-at config [:port]))
+
 (def api-key
-  "XXXXX")
+  (plj/get-at config [:api-key]))
 
 (def thread-id
-  "XXXXX")
+  (plj/get-at config [:thread-id]))
 
 (def assistant-id
-  "XXXXX")
+  (plj/get-at config [:assistant-id]))
 
 (defn ask-a-question [message, thread-id, api-key]
   (let [url (str "https://api.openai.com/v1/threads/" thread-id "/messages")
@@ -85,5 +92,5 @@
 
 (defn -main
   [& _]
-  (jetty/run-jetty emilio {:port 3000}))
+  (jetty/run-jetty emilio {:port port}))
 
