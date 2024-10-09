@@ -31,6 +31,9 @@
 (def telegram-bot-token
   (plj/get-at config [:telegram-bot-token]))
 
+(def owners
+  (plj/get-at config [:owners]))
+
 (defn respond-with [bot ^Long who ^String what]
   (let [sm (-> (SendMessage/builder)
                (.chatId (str who))
@@ -53,8 +56,11 @@
 
     (onUpdateReceived [^Update update]
       (let [msg (.getMessage update)
-            user (.getFrom msg)]
-        (respond-with this (.getId user) (communicate (.getText msg)))))))
+            user (.getFrom msg)
+            user-id (.getId user)]
+        (if (some #(= % user-id) owners)
+          (respond-with this user-id (communicate (.getText msg)))
+          (respond-with this user-id "You are not authorized to use this bot."))))))
 
 (defn query-the-assistant [message, thread-id, api-key]
   (let [url (str "https://api.openai.com/v1/threads/" thread-id "/messages")
